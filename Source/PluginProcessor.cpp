@@ -95,13 +95,22 @@ void NLMS_filterAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
-    h = new float[H];
-    bufStaryX = new float[samplesPerBlock];
-    bufStaryD = new float[samplesPerBlock];
+    h = new double[H];
+    bufStaryX = new double[samplesPerBlock];
+    bufStaryD = new double[samplesPerBlock];
 
     for (int i = 0; i < H; i++) h[i] = 0.0;
     for (int i = 0; i < samplesPerBlock; i++) bufStaryX[i] = 0.0;
     for (int i = 0; i < samplesPerBlock; i++) bufStaryD[i] = 0.0;
+
+    bufX = new double[2 * samplesPerBlock];
+    bufD = new double[2 * samplesPerBlock];
+
+
+    e = new double[2 * samplesPerBlock];
+    y = new double[2 * samplesPerBlock];
+    s = new double[H];
+
 }
 
 void NLMS_filterAudioProcessor::resetFilter()
@@ -171,14 +180,6 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     N = buffer.getNumSamples();
     N2 = 2 * N;
 
-    float* bufX = new float[N2];
-    float* bufD = new float[N2];
-
-
-    float* e = new float[N2];
-    float* y = new float[N2];
-    float* s = new float[H];
-
     // ..do something to the data...
 //przepisanie wektorów aktualnych do historycznych
 //wyzerowanie wektorów e i y
@@ -208,19 +209,22 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     }
 
     // for n=H:N 
-    for (int n = N; n < N2; ++n) { //for (int n = H; n < N; ++n) // for (int n = N + H; n<N2; ++n)
+    for (int n = N; n < N2; n++) { //for (int n = H; n < N; ++n) // for (int n = N + H; n<N2; ++n)
         // s = x[n:-1:n-H+1]
-        for (int i = 0; i < H; ++i) s[i] = bufX[n - i];   // tu moze musi być +1??
+        for (int i = 0; i < H; i++) s[i] = bufX[n - i];   // tu moze musi być +1??
 
         // e[n] = d[n] - s'*h
         e[n] = bufD[n];
-        for (int i = 0; i < H; ++i) e[n] -= s[i] * h[i];
+        for (int i = 0; i < H; i++) e[n] -= s[i] * h[i];
 
-        // h = h + μ*e[n]*s
-        for (int i = 0; i < H; ++i) h[i] += mu * e[n] * s[i];
+        //NLMS: h = h + ((2*μ)/(γ+s'*s))*e[n]*s; //LMS: h = h + μ*e[n]*s
+        ss = 0.0;
+        for (int i = 0; i < H; i++) ss += s[i] * s[i];
+        mianow = 1 / (gamma + ss);
+        for (int i = 0; i < H; i++) h[i] += (2*mu) * mianow * e[n] * s[i];
 
         // y[n] = s'*h                                         
-        for (int i = 0; i < H; ++i) y[n] += s[i] * h[i];
+        for (int i = 0; i < H; i++) y[n] += s[i] * h[i];
     }
 
 
@@ -230,9 +234,9 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         x[n - N] = e[n];
         d[n - N] = y[n];
     }
-    delete[] e;
-    delete[] y;
-    delete[] s;
+    // delete[] e;
+    // delete[] y;
+    // delete[] s;
     //}
 }
 

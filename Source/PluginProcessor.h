@@ -59,8 +59,11 @@ public:
 
     //==============================================================================
     const int H = 128;
-    float mu = 0.01;
-    float gamma = 0.0001;
+    double mu = 0.01;
+    double gamma = 0.0001;
+    
+    double ss;
+    double mianow;
 
     int N; 
     int N2;
@@ -69,7 +72,15 @@ private:
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NLMS_filterAudioProcessor)
 
-    float* h;
-    float* bufStaryX;
-    float* bufStaryD;
+    double* h;
+    double* bufStaryX;
+    double* bufStaryD;
+
+    double* bufX;
+    double* bufD;
+
+    double* e;
+    double* y;
+    double* s;
+
 };
