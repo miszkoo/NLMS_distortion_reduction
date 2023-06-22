@@ -15,9 +15,11 @@ NLMS_filterAudioProcessor::NLMS_filterAudioProcessor()
      : AudioProcessor (BusesProperties()
                      #if ! JucePlugin_IsMidiEffect
                       #if ! JucePlugin_IsSynth
-                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
+                       //.withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
+                       .withInput  ("Input",  juce::AudioChannelSet::discreteChannels(4), true)
                       #endif
-                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                       //.withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                       .withOutput ("Output", juce::AudioChannelSet::discreteChannels(4), true)
                      #endif
                        )
 #endif
@@ -98,18 +100,23 @@ void NLMS_filterAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     h = new double[H];
     bufStaryX = new double[samplesPerBlock];
     bufStaryD = new double[samplesPerBlock];
+    //bufStaryC = new double[samplesPerBlock];
 
     for (int i = 0; i < H; i++) h[i] = 0.0;
     for (int i = 0; i < samplesPerBlock; i++) bufStaryX[i] = 0.0;
     for (int i = 0; i < samplesPerBlock; i++) bufStaryD[i] = 0.0;
+    //for (int i = 0; i < samplesPerBlock; i++) bufStaryC[i] = 0.0;
 
     bufX = new double[2 * samplesPerBlock];
     bufD = new double[2 * samplesPerBlock];
+    //bufC = new double[2 * samplesPerBlock];
 
 
     e = new double[2 * samplesPerBlock];
     y = new double[2 * samplesPerBlock];
+    
     s = new double[H];
+    //sC = new double[H]; 
 
 }
 
@@ -176,6 +183,7 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         //auto* channelData = buffer.getWritePointer (channel);
     auto* x = buffer.getWritePointer(0);
     auto* d = buffer.getWritePointer(1);
+    auto* c = buffer.getWritePointer(2); // kanał do filtracji
 
     N = buffer.getNumSamples();
     N2 = 2 * N;
@@ -187,6 +195,7 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     {
         e[i] = 0.0;
         y[i] = 0.0;
+        //c[i] = 0.0;
     }
 
     //złożenie wektorów
@@ -194,11 +203,13 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         if (i < N2) {
             bufX[i] = bufStaryX[i];
             bufD[i] = bufStaryD[i];
+            //bufC[i] = bufStaryC[i];
         }
     }
     for (int i = N; i < N2; i++) {
         bufX[i] = x[i - N];
         bufD[i] = d[i - N];
+        //bufC[i] = c[i - N];
     }
 
     //przepisanie aktualnego buforu do buforu historycznego
@@ -206,33 +217,41 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
 
         bufStaryX[i] = x[i];
         bufStaryD[i] = d[i];
+        //bufStaryC[i] = c[i];
+
     }
 
     // for n=H:N 
     for (int n = N; n < N2; n++) { //for (int n = H; n < N; ++n) // for (int n = N + H; n<N2; ++n)
         // s = x[n:-1:n-H+1]
-        for (int i = 0; i < H; i++) s[i] = bufX[n - i];   // tu moze musi być +1??
+        for (int i = 0; i < H; i++) s[i] = bufX[n - i];
+        // do filtracji kanału c
+        //for (int i = 0; i < H; i++) sC[i] = bufC[n - i];
 
         // e[n] = d[n] - s'*h
         e[n] = bufD[n];
         for (int i = 0; i < H; i++) e[n] -= s[i] * h[i];
 
-        //NLMS: h = h + ((2*μ)/(γ+s'*s))*e[n]*s; //LMS: h = h + μ*e[n]*s
+        // NLMS: h = h + ((2*μ)/(γ+s'*s))*e[n]*s; //LMS: h = h + μ*e[n]*s
         ss = 0.0;
         for (int i = 0; i < H; i++) ss += s[i] * s[i];
         mianow = 1 / (gamma + ss);
-        for (int i = 0; i < H; i++) h[i] += (2*mu) * mianow * e[n] * s[i];
+        for (int i = 0; i < H; i++) h[i] += (2 * mu) * mianow * e[n] * s[i];
 
         // y[n] = s'*h                                         
         for (int i = 0; i < H; i++) y[n] += s[i] * h[i];
-    }
 
+        // filtracja kanału do wzmacniacza
+        //for (int i = 0; i < H; i++) bufC[n] -= sC[i] * h[i]; // jeżeli nie będzie działać  
+        //to pewnie musi być wcześniej bo tu działa już na nowych współczynniakch
+    }
 
     //wyjscie
       //return e,y
     for (int n = N; n < N2; n++) {
         x[n - N] = e[n];
         d[n - N] = y[n];
+        //c[n - N] = bufC[n];
     }
     // delete[] e;
     // delete[] y;
