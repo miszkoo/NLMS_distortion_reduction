@@ -35,9 +35,10 @@ void NLMS_filterAudioProcessorEditor::paint (juce::Graphics& g)
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 
-   // g.setColour (juce::Colours::white);
-   // g.setFont (15.0f);
-   // g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
+    g.setColour (juce::Colours::white);
+    g.setFont (12.0f);
+    g.drawFittedText ("in1: szum, in2: szum+sygnal,\nin3: szum+sygnal kanal, in4:", getLocalBounds(), juce::Justification::centredTop, 1);
+    g.drawFittedText ("out1: przefiltrowane (blad), out2: estymowany szum,\nout3: przefiltrowane, out4:in2 - in1", getLocalBounds(), juce::Justification::centredBottom, 1);
 }
 
 void NLMS_filterAudioProcessorEditor::resized()

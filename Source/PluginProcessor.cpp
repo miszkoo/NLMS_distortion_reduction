@@ -184,9 +184,9 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     //for (int channel = 0; channel < totalNumInputChannels; ++channel)
     //{
         //auto* channelData = buffer.getWritePointer (channel);
-    auto* x = buffer.getWritePointer(0);
-    auto* d = buffer.getWritePointer(1);
-    auto* q = buffer.getWritePointer(2); // kanał do filtracji
+    auto* x = buffer.getWritePointer(0); // szum
+    auto* d = buffer.getWritePointer(1); // szum + sygnal
+    auto* q = buffer.getWritePointer(2); // kanał do filtracji (szum + sygnal)
     auto* w = buffer.getWritePointer(3); 
     
 
@@ -194,7 +194,13 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     N2 = 2 * N;
 
     // ..do something to the data...
-//przepisanie wektorów aktualnych do historycznych
+
+//wyznaczenie sygnału szumu
+    for (int i = 0; i < N; i++) {
+        w[i] = d[i] - x[i];
+        x[i] = w[i];
+    }
+
 //wyzerowanie wektorów e i y
     for (int i = 0; i < N2; i++)
     {
@@ -223,7 +229,6 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         bufStaryQ[i] = q[i];
     }
 
-    //trzeba jeszcze dorobić operacje prąd - napięcie = zniekształcenia
 
     // for n=H:N 
     for (int n = N; n < N2; n++) { //for (int n = H; n < N; ++n) // for (int n = N + H; n<N2; ++n)
