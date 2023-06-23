@@ -75,15 +75,16 @@ private:
     double* h;
     double* bufStaryX;
     double* bufStaryD;
-    double* bufStaryC;
+    double* bufStaryQ;
 
     double* bufX;
     double* bufD;
-    //double* bufC;
+    double* bufQ;
+    double* bufW;
 
     double* e;
     double* y;
     double* s;
-    //double* sC;
+    double* sQ;
 
 };
