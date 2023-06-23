@@ -76,6 +76,7 @@ private:
     double* bufStaryX;
     double* bufStaryD;
     double* bufStaryQ;
+    double* difSig;
 
     double* bufX;
     double* bufD;

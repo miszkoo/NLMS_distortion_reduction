@@ -113,6 +113,8 @@ void NLMS_filterAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     bufD = new double[2 * samplesPerBlock];
     bufQ = new double[2 * samplesPerBlock];
 
+    difSig = new double[samplesPerBlock];
+
 
     e = new double[2 * samplesPerBlock];
     y = new double[2 * samplesPerBlock];
@@ -194,7 +196,13 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     N2 = 2 * N;
 
     // ..do something to the data...
-//przepisanie wektorów aktualnych do historycznych
+    
+    //podstawienie jako sygnał x sygnału różnicy napięcie - prąd
+    //for (int i =0; i < N; i++){
+    //    w[i] = x[i] - d[i];  //wychodzi nam sygnał szumu
+    //    x[i] = w[i];         //trzebaby zrobić tak by od automatycznie dobierał sobie wzmocnienie
+    //}                        //między kanałem x napięcia i kanałem d prądu, tak by dostać same zniekształcenia
+
 //wyzerowanie wektorów e i y
     for (int i = 0; i < N2; i++)
     {
@@ -230,7 +238,7 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         // s = x[n:-1:n-H+1]
         for (int i = 0; i < H; i++) s[i] = bufX[n - i];
         //s do filtracji kanału q (dla wzmacniacza)
-        for (int i = 0; i < H; i++) sQ[i] = bufX[n - i];
+        for (int i = 0; i < H; i++) sQ[i] = bufQ[n - i];
 
         // e[n] = d[n] - s'*h
         e[n] = bufD[n];
@@ -256,7 +264,7 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         
 
         // (2) filtracja kanału q (dla wzmacniacza)
-        for (int i = 0; i < H; i++) bufQ[n] -= sQ[i] * h[i]; // jeżeli nie będzie działać  
+        for (int i = 0; i < H; i++) bufQ[n] += sQ[i] * h[i]; // jeżeli nie będzie działać  
         //to pewnie musi być wcześniej bo tu działa już na nowych współczynniakch
         // (2)
         //Sygnał cichy ale praktycznie idealnie odszumiony uzyskuje się jeżeli odejmie się od 
