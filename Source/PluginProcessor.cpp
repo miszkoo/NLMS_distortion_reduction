@@ -16,12 +16,10 @@ NLMS_filterAudioProcessor::NLMS_filterAudioProcessor()
                      #if ! JucePlugin_IsMidiEffect
                       #if ! JucePlugin_IsSynth
                        //.withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-                       //.withInput  ("Input",  juce::AudioChannelSet::discreteChannels(4), true)
-                       .withInput  ("Input",  juce::AudioChannelSet::quadraphonic(), true)
+                       .withInput  ("Input",  juce::AudioChannelSet::discreteChannels(4), true)
                       #endif
                        //.withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-                       //.withOutput ("Output", juce::AudioChannelSet::discreteChannels(4), true)
-                       .withOutput ("Output", juce::AudioChannelSet::quadraphonic(), true)
+                       .withOutput ("Output", juce::AudioChannelSet::discreteChannels(4), true)
                      #endif
                        )
 #endif
@@ -102,16 +100,16 @@ void NLMS_filterAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     h = new double[H];
     bufStaryX = new double[samplesPerBlock];
     bufStaryD = new double[samplesPerBlock];
-    bufStaryQ = new double[samplesPerBlock];
+    //bufStaryC = new double[samplesPerBlock];
 
     for (int i = 0; i < H; i++) h[i] = 0.0;
     for (int i = 0; i < samplesPerBlock; i++) bufStaryX[i] = 0.0;
     for (int i = 0; i < samplesPerBlock; i++) bufStaryD[i] = 0.0;
-    for (int i = 0; i < samplesPerBlock; i++) bufStaryQ[i] = 0.0;
+    //for (int i = 0; i < samplesPerBlock; i++) bufStaryC[i] = 0.0;
 
     bufX = new double[2 * samplesPerBlock];
     bufD = new double[2 * samplesPerBlock];
-    bufQ = new double[2 * samplesPerBlock];
+    //bufC = new double[2 * samplesPerBlock];
 
     difSig = new double[samplesPerBlock];
 
@@ -120,7 +118,7 @@ void NLMS_filterAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     y = new double[2 * samplesPerBlock];
     
     s = new double[H];
-    sQ = new double[H]; 
+    //sC = new double[H]; 
 
 }
 
@@ -147,8 +145,7 @@ bool NLMS_filterAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
     // Some plugin hosts, such as certain GarageBand versions, will only
     // load plugins that support stereo bus layouts.
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
-     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo() 
-        && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::quadraphonic())
+     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
 
     // This checks if the input layout matches the output layout
@@ -188,9 +185,7 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         //auto* channelData = buffer.getWritePointer (channel);
     auto* x = buffer.getWritePointer(0);
     auto* d = buffer.getWritePointer(1);
-    auto* q = buffer.getWritePointer(2); // kanał do filtracji
-    auto* w = buffer.getWritePointer(3); 
-    
+    auto* c = buffer.getWritePointer(2); // kanał do filtracji
 
     N = buffer.getNumSamples();
     N2 = 2 * N;
@@ -208,6 +203,7 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     {
         e[i] = 0.0;
         y[i] = 0.0;
+        //c[i] = 0.0;
     }
 
     //złożenie wektorów
@@ -215,39 +211,34 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         if (i < N2) {
             bufX[i] = bufStaryX[i];
             bufD[i] = bufStaryD[i];
-            bufQ[i] = bufStaryQ[i];
+            //bufC[i] = bufStaryC[i];
         }
     }
     for (int i = N; i < N2; i++) {
         bufX[i] = x[i - N];
         bufD[i] = d[i - N];
-        bufQ[i] = q[i - N];  // to jak jest odkomentowane to się wywala, jeżeli ustawimy c[i -N] to wtedy się wywala 
+        //bufC[i] = c[i - N];
     }
 
     //przepisanie aktualnego buforu do buforu historycznego
     for (int i = 0; i < N; i++) {
+
         bufStaryX[i] = x[i];
         bufStaryD[i] = d[i];
-        bufStaryQ[i] = q[i];
-    }
+        //bufStaryC[i] = c[i];
 
-    //trzeba jeszcze dorobić operacje prąd - napięcie = zniekształcenia
+    }
 
     // for n=H:N 
     for (int n = N; n < N2; n++) { //for (int n = H; n < N; ++n) // for (int n = N + H; n<N2; ++n)
         // s = x[n:-1:n-H+1]
         for (int i = 0; i < H; i++) s[i] = bufX[n - i];
-        //s do filtracji kanału q (dla wzmacniacza)
-        for (int i = 0; i < H; i++) sQ[i] = bufQ[n - i];
+        // do filtracji kanału c
+        //for (int i = 0; i < H; i++) sC[i] = bufC[n - i];
 
         // e[n] = d[n] - s'*h
         e[n] = bufD[n];
         for (int i = 0; i < H; i++) e[n] -= s[i] * h[i];
-
-        // (1) filtracja kanału q (dla wzmacniacza)
-        //for (int i = 0; i < H; i++) bufQ[n] -= sQ[i] * h[i]; // jeżeli nie będzie działać  
-        //to pewnie musi być wcześniej bo tu działa już na nowych współczynniakch
-        // (1)
 
         // NLMS: h = h + ((2*μ)/(γ+s'*s))*e[n]*s; //LMS: h = h + μ*e[n]*s
         ss = 0.0;
@@ -258,19 +249,9 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         // y[n] = s'*h                                         
         for (int i = 0; i < H; i++) y[n] += s[i] * h[i];
 
-        // BY POPRAWIĆ DZIAŁANIE STANDARDOWEGO FILTRU NLMS WARTO STWORZYĆ BUFOR DLA SYGANŁU D
-        // I PRZEFITLROWAĆ SYGAŁ BY UZYSKAĆ SYGNAŁ BŁĘDU DOPIERO TERAZ BO W TYM MIEJSCU 
-        // MAMY WSPÓŁCZYNNIKI PO AKTUALIZACJI 
-        
-
-        // (2) filtracja kanału q (dla wzmacniacza)
-        for (int i = 0; i < H; i++) bufQ[n] += sQ[i] * h[i]; // jeżeli nie będzie działać  
+        // filtracja kanału do wzmacniacza
+        //for (int i = 0; i < H; i++) bufC[n] -= sC[i] * h[i]; // jeżeli nie będzie działać  
         //to pewnie musi być wcześniej bo tu działa już na nowych współczynniakch
-        // (2)
-        //Sygnał cichy ale praktycznie idealnie odszumiony uzyskuje się jeżeli odejmie się od 
-        //sygnału błędu wyliczonego wcześniej, sygnał błędu wyliczony po aktualizacji współczynników 
-
-
     }
 
     //wyjscie
@@ -278,8 +259,7 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     for (int n = N; n < N2; n++) {
         x[n - N] = e[n];
         d[n - N] = y[n];
-        q[n - N] = bufQ[n];
-        //q[n - N] = e[n];
+        //c[n - N] = bufC[n];
     }
     // delete[] e;
     // delete[] y;
