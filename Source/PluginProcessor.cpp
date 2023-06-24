@@ -197,6 +197,7 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
 
 //wyznaczenie sygnału szumu
     for (int i = 0; i < N; i++) {
+        //w[i] = 0;
         w[i] = d[i] - x[i];
         x[i] = w[i];
     }
