@@ -242,7 +242,9 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         // s = x[n:-1:n-H+1]
         for (int i = 0; i < H; i++) s[i] = bufX[n - i];
         //s do filtracji kanału q (dla wzmacniacza)
-        for (int i = 0; i < H; i++) sQ[i] = bufX[n - i];
+        for (int i = 0; i < H; i++) sQ[i] = bufX[n - i]; // chyba można by to przerobić i używać cały czas s
+                                                         // to się wzbudza i robi echo bo na wyjście q (3) podajemy 
+                                                         // ten sam sygnał co wcześniej czyli sygnał x
 
         // e[n] = d[n] - s'*h
         e[n] = bufD[n];
