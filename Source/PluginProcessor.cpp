@@ -229,6 +229,12 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         bufStaryD[i] = d[i];
         bufStaryQ[i] = q[i];
     }
+    //---------------------------------------------------------------------------
+    
+    // SPRÓBOWAĆ ZAMIENIĆ SYGNAŁY x i d !!!!!!!!!!!!!!!!!!!!
+    // po tym sprawdzić co stanie się z sygnałami e, y oraz q 
+    // 
+    //---------------------------------------------------------------------------
 
 
     // for n=H:N 
@@ -253,6 +259,7 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         mianow = 1 / (gamma + ss);
         for (int i = 0; i < H; i++) h[i] += (2 * mu) * mianow * e[n] * s[i];
 
+        
         // y[n] = s'*h                                         
         for (int i = 0; i < H; i++) y[n] += s[i] * h[i];
 
@@ -263,6 +270,7 @@ void NLMS_filterAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
 
         // (2) filtracja kanału q (dla wzmacniacza)
         for (int i = 0; i < H; i++) bufQ[n] -= sQ[i] * h[i]; // jeżeli nie będzie działać  
+        //for (int i = 0; i < H; i++) bufQ[n] += sQ[i] * h[i]; // wersja v2 do sprawdzenia  
         //to pewnie musi być wcześniej bo tu działa już na nowych współczynniakch
         // (2)
         //Sygnał cichy ale praktycznie idealnie odszumiony uzyskuje się jeżeli odejmie się od 
